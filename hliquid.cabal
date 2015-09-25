@@ -16,7 +16,8 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Lib
-  build-depends:       base >= 4.7 && < 5
+  build-depends:       base >= 4.7 && < 5,
+                       text
   default-language:    Haskell2010
 
 executable hliquid-exe
@@ -38,4 +39,4 @@ test-suite hliquid-test
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/hliquid
+  location: https://github.com/xldenis/hliquid
