@@ -6,5 +6,5 @@ module HLiquid.Syntax where
     | ReturnBlock Expression 
     | Block Expression
 
-  data Expression = Text -- Temporary Expand to actual expressions later
+  data Expression = Expression String -- Temporary Expand to actual expressions later
 
