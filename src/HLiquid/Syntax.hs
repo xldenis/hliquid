@@ -3,8 +3,10 @@ module HLiquid.Syntax where
 
   data Liquid 
     = HTML Text 
+    | If Expression Expression Expression
     | ReturnBlock Expression 
     | Block Expression
+    deriving (Eq, Show)
 
-  data Expression = Expression String -- Temporary Expand to actual expressions later
-
+  data Expression = Expression [Text] -- Temporary Expand to actual expressions later
+    deriving (Eq, Show)

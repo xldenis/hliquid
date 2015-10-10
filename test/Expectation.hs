@@ -2,11 +2,13 @@ module Expectation where
   import Test.Hspec.Expectations
   
   import Text.Megaparsec
-  import Text.Megaparsec.String
+  import Text.Megaparsec.Text
+
+  import Data.Text
 
   import Control.Monad (unless)
   
-  parses :: Parser a -> String -> Either ParseError a
+  parses :: Parser a -> Text -> Either ParseError a
   parses par str = parse par "" str
 
   (~>) :: (Show a, Eq a, Show b) => Either b a -> a -> Expectation 
@@ -19,7 +21,7 @@ module Expectation where
       Right c -> f c
       Left _ -> expectationFailure $ "operation failed"
 
-  wontParse :: Parser a -> String -> Expectation
+  wontParse :: Parser a -> Text -> Expectation
   wontParse par str = case parse par "" str of
-    Right _ -> expectationFailure $ "input `"++ str ++ "` shouldnt have parsed."
+    Right _ -> expectationFailure $ "input `"++ (unpack str) ++ "` shouldnt have parsed."
     _ -> return ()
