@@ -1,27 +1,58 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Expectation where
-  import Test.Hspec.Expectations
-  
-  import Text.Megaparsec
-  import Text.Megaparsec.Text
 
-  import Data.Text
+import Control.Monad (filterM)
+import Data.Text (Text)
+import Data.Text.IO as T (readFile)
+import System.Directory
+import System.FilePath
 
-  import Control.Monad (unless)
-  
-  parses :: Parser a -> Text -> Either ParseError a
-  parses par str = parse par "" str
+import Test.Hspec
+import Test.Hspec.Megaparsec
+import Text.Megaparsec
+import Text.Megaparsec.Text
 
-  (~>) :: (Show a, Eq a, Show b) => Either b a -> a -> Expectation 
-  res ~> want = case res of
-      Right a -> unless (a == want) $ expectationFailure $ "got "++show a++" expected "++show want
-      Left b -> expectationFailure $ show b
+parseFromFile p file = runParser p file <$> T.readFile file
 
-  success :: Either a b -> (b -> Expectation) -> Expectation
-  success res f = case res of
-      Right c -> f c
-      Left _ -> expectationFailure $ "operation failed"
+filesShouldParse :: Show b => FilePath -> Parser b -> Spec
+filesShouldParse dir p = do
+  fs <- runIO $ getDirectoryPaths dir >>= filterM (doesFileExist)
 
-  wontParse :: Parser a -> Text -> Expectation
-  wontParse par str = case parse par "" str of
-    Right _ -> expectationFailure $ "input `"++ (unpack str) ++ "` shouldnt have parsed."
-    _ -> return ()
+  describe ("parser successfully parses files in " ++ dir) $ do
+    mapM_ (\f -> do
+      it ((takeFileName f) ++ " parses correctly.") $ do
+        (parseFromFile (p <* eof) f) >>= shouldSucceed) fs
+
+filesShouldFail :: Show b => FilePath -> Parser b -> Spec
+filesShouldFail dir p = do
+  fs <- runIO $ getDirectoryPaths dir >>= filterM (doesFileExist)
+
+  describe ("parser fails to parse files in " ++ dir) $ do
+    mapM_ (\f -> do
+      it ((takeFileName f) ++ " fails.") $ do
+        (parseFromFile (p <* eof) f) >>= shouldFail) fs
+
+type ParserExpectation t e a = Either (ParseError t e) a -> Expectation
+
+-- | Expectation that argument is result of a failed parser.
+
+shouldFail :: Show a => ParserExpectation t e a
+shouldFail r = case r of
+  Left _ -> return ()
+  Right v -> expectationFailure $
+    "the parser is expected to fail, but it parsed: " ++ show v
+
+-- | Expectation that argument is result of a succeeded parser.
+
+shouldSucceed :: (Ord t, ShowToken t, ShowErrorComponent e, Show a) => ParserExpectation t e a
+shouldSucceed r = case r of
+  Left e -> expectationFailure $
+    "the parser is expected to succeed, but it failed with:\n" ++
+    showParseError e
+  Right _ -> return ()
+
+showParseError :: (Ord t, ShowToken t, ShowErrorComponent e) => ParseError t e -> String
+showParseError = unlines . fmap ("  " ++) . lines . parseErrorPretty
+
+getDirectoryPaths :: String -> IO [FilePath]
+getDirectoryPaths dir =  map (\f -> replaceDirectory f dir) <$> getDirectoryContents dir

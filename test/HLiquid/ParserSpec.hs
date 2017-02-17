@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module HLiquid.ParserSpec (spec) where
-  
+
 
   import Test.Hspec
 
@@ -11,8 +11,4 @@ module HLiquid.ParserSpec (spec) where
 
   spec :: Spec
   spec = do
-    describe "returnBlock" $ do
-      it "parses start and end" $ do
-        retBlock `parses` "{% expression %}" ~> ReturnBlock (Expression ["expression"])
-      it "leaves whitespace on outside" $ do
-        pending
+    return ()
