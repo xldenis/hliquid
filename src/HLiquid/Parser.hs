@@ -15,22 +15,24 @@ import HLiquid.Parser.Variable
 fullFile = many liquid <* eof
 
 liquid :: Parser Expression
-liquid = ifTag
-      <|> unlessTag
-      <|> caseTag
-      <|> formTag
-      <|> forTag
-      <|> tablerowTag
+liquid = assignTag
+      <|> bodyText
       <|> breakTag
+      <|> captureTag liquid
+      <|> caseTag
+      <|> commentTag
       <|> continueTag
       <|> cycleTag
-      <|> layoutTag
-      <|> commentTag
+      <|> decrementTag
       <|> expressionTag
-      <|> assignTag
-      <|> captureTag liquid
+      <|> formTag
+      <|> forTag
+      <|> ifTag
+      <|> incrementTag
+      <|> layoutTag
       <|> paginateTag
-      <|> bodyText
+      <|> tablerowTag
+      <|> unlessTag
 
 ifTag :: Parser Expression
 ifTag = do
@@ -128,7 +130,7 @@ commentTag :: Parser Expression
 commentTag = do
   try . tag' $ symbol "comment"
   many $ liquid
-  try . tag' $ symbol "endcomment"
+  tag' $ symbol "endcomment"
   return $ Comment
 
 expressionTag :: Parser Expression

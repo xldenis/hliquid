@@ -35,8 +35,8 @@ data Expression
   -- Variable Tag
   | Assign Text Text
   | Capture -- TODO
-  | Increment Expression
-  | Decrement Expression
+  | Increment
+  | Decrement
   | Variable Text
   | Handle Expression Text
   -- Filters
