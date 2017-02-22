@@ -11,10 +11,11 @@ import HLiquid.Lexer
 import HLiquid.Syntax
 
 import HLiquid.Parser.Variable
+import HLiquid.Parser.Expression
 
 fullFile = many liquid <* eof
 
-liquid :: Parser Expression
+liquid :: Parser Statement
 liquid = assignTag
       <|> bodyText
       <|> breakTag
@@ -34,7 +35,7 @@ liquid = assignTag
       <|> tablerowTag
       <|> unlessTag
 
-ifTag :: Parser Expression
+ifTag :: Parser Statement
 ifTag = do
   b1 <- branch "if"
 
@@ -51,9 +52,9 @@ ifTag = do
   where branch nm = do
                       cond <- try . tag' $ symbol nm *> placeHolder
                       body <- many $ liquid
-                      return $ Branch Filter body
+                      return $ Branch Comment body
 
-unlessTag :: Parser Expression
+unlessTag :: Parser Statement
 unlessTag = do
   b1 <- branch "unless"
 
@@ -70,9 +71,9 @@ unlessTag = do
   where branch nm = do
                       cond <- try . tag' $ symbol nm *> placeHolder
                       body <- many $ liquid
-                      return $ Branch Filter body
+                      return $ Branch Comment body
 
-caseTag :: Parser Expression
+caseTag :: Parser Statement
 caseTag = try $ do
   tag' $ symbol "case"
   body <- some $ (tag' $ symbol "when") >> When <$> many liquid
@@ -80,14 +81,14 @@ caseTag = try $ do
 
   return $ Case body
 
-forTag :: Parser Expression
+forTag :: Parser Statement
 forTag = do
   try . tag' $ symbol "for" *> placeHolder
   b <- many $ liquid
   tag' $ symbol "endfor"
   return $ For Form b
 
-tablerowTag :: Parser Expression
+tablerowTag :: Parser Statement
 tablerowTag = try $ do
   tag' $ symbol "tablerow"
   b <- many $ liquid
@@ -95,22 +96,22 @@ tablerowTag = try $ do
 
   return $ Tablerow
 
-breakTag :: Parser Expression
+breakTag :: Parser Statement
 breakTag = try . tag' $ symbol "break" *> pure Break
 
-continueTag :: Parser Expression
+continueTag :: Parser Statement
 continueTag = try . tag' $ symbol "continue" *> pure Continue
 
-cycleTag :: Parser Expression
+cycleTag :: Parser Statement
 cycleTag = try . tag' $ symbol "cycle" *> placeHolder *> pure (Cycle [])
 
-layoutTag :: Parser Expression
+layoutTag :: Parser Statement
 layoutTag = try . tag' $ do
   symbol "layout"
   placeHolder
   pure Layout
 
-formTag :: Parser Expression
+formTag :: Parser Statement
 formTag = do
   try . tag' $ symbol "form" *> placeHolder
   b <- many $ liquid
@@ -118,7 +119,7 @@ formTag = do
 
   return $ Form
 
-paginateTag :: Parser Expression
+paginateTag :: Parser Statement
 paginateTag = do
   try . tag' $ symbol "paginate" *> placeHolder
   b <- many $ liquid
@@ -126,19 +127,19 @@ paginateTag = do
 
   return $ Paginate
 
-commentTag :: Parser Expression
+commentTag :: Parser Statement
 commentTag = do
   try . tag' $ symbol "comment"
   many $ liquid
   tag' $ symbol "endcomment"
   return $ Comment
 
-expressionTag :: Parser Expression
+expressionTag :: Parser Statement
 expressionTag = try . tag $ do
-  many $ noneOf ['}']
-  return $ Expression []
+  e <- filteredExpression
+  return $ Expression e
 
-bodyText :: Parser Expression
+bodyText :: Parser Statement
 bodyText = LitString . pack <$> do
   notFollowedBy openB
   someTill anyChar $ lookAhead openB

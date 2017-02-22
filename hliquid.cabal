@@ -19,10 +19,12 @@ library
                      , HLiquid.Syntax
                      , HLiquid.Parser
                      , HLiquid.Parser.Variable
+                     , HLiquid.Parser.Expression
   other-modules:       HLiquid.Lexer
   build-depends:       base >= 4.7 && < 5
                      , text
                      , megaparsec
+                     , scientific
   default-language:    Haskell2010
 
 executable hliquid

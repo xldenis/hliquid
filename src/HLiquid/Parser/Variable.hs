@@ -8,19 +8,19 @@ import Text.Megaparsec.Text
 
 import HLiquid.Lexer
 
-assignTag :: Parser Expression
+assignTag :: Parser Statement
 assignTag = try . tag' $ do
   symbol "assign"
   placeHolder
   return $ Assign "" ""
 
-incrementTag :: Parser Expression
+incrementTag :: Parser Statement
 incrementTag = try . tag' $ symbol "increment" *> placeHolder *> pure Increment
 
-decrementTag :: Parser Expression
+decrementTag :: Parser Statement
 decrementTag = try . tag' $ symbol "decrement" *> placeHolder *> pure Decrement
 
-captureTag :: Parser Expression -> Parser Expression
+captureTag :: Parser Statement -> Parser Statement
 captureTag e = do
   try . tag' $ symbol "capture" *> placeHolder
   many e

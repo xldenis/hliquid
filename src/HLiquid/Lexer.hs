@@ -1,13 +1,15 @@
 module HLiquid.Lexer where
 
-import Control.Monad
+import           Control.Monad
+import           Control.Applicative (empty)
+import           Control.Monad       (void, join)
 
+import           Data.Scientific
+
+import           Text.Megaparsec
 import qualified Text.Megaparsec.Lexer as L
-import Text.Megaparsec.Text
-import Text.Megaparsec
+import           Text.Megaparsec.Text
 
-import Control.Applicative (empty)
-import Control.Monad (void, join)
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
@@ -26,3 +28,9 @@ tag' = between (symbol "{%") (symbol "%}")
 
 placeHolder :: Parser String
 placeHolder = someTill anyChar (lookAhead $ string "%}")
+
+number :: Parser Scientific
+number = L.signed sc L.number
+
+identifier :: Parser String
+identifier = many $ alphaNumChar <|> oneOf "_-"

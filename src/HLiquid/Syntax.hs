@@ -8,22 +8,23 @@ data Liquid
   deriving (Eq, Show)
 
 data When
-  = When [Expression]
-  deriving (Eq, Show)
-data Branch
-  = Branch Expression [Expression]
-  | Else [Expression]
+  = When [Statement]
   deriving (Eq, Show)
 
-data Expression
-  = Expression [Text] -- Temporary Expand to actual expressions later
+data Branch
+  = Branch Statement [Statement]
+  | Else [Statement]
+  deriving (Eq, Show)
+
+data Statement
+  = Expression Expression -- Temporary Expand to actual expressions later
   | If [Branch] -- unless and elseif
   | Case [When]
   -- Loop Tags
-  | For Expression [Expression]
+  | For Statement [Statement]
   | Break
   | Continue
-  | Cycle [Expression]
+  | Cycle [Statement]
   | Tablerow
   -- Layout Tag
   | Comment
@@ -37,10 +38,10 @@ data Expression
   | Capture -- TODO
   | Increment
   | Decrement
-  | Variable Text
-  | Handle Expression Text
+  -- | Variable Text
+  | Handle Statement Text
   -- Filters
-  | Filter
+  -- | Filter
   -- Types
   | LitString Text
 
@@ -50,10 +51,24 @@ data Expression
 
 data Operator
   = Equal
-  | NotEqual
+  | NotEq
   | Greater
   | Less
   | GreaterEq
   | LessEq
   | Or
   | And
+  | Contains
+  deriving (Eq, Show)
+
+data Expression
+  = String String
+  | Integer Integer
+  | Float Double
+  | Boolean Bool
+  | Nil
+  | Array Expression
+  | Op Operator Expression Expression
+  | Filter Expression  String [Expression]
+  | Variable [String]
+  deriving (Eq, Show)
