@@ -11,10 +11,10 @@ import Data.Text.IO (readFile)
 import Text.Megaparsec
 import Text.Megaparsec.Text
 
-parseFile :: Show a => Parser a -> String -> IO ()
+parseFile :: Show a => Parser a -> String -> IO (Either String a)
 parseFile p str = do
   f <- readFile str
   let res = parse p str f
   case res of
-    Left err -> putStr . parseErrorPretty $ err
-    Right _  -> return () -- putStrLn "passed"
+    Left err -> return . Left $ parseErrorPretty err
+    Right a  -> return $ Right a -- putStrLn "passed"

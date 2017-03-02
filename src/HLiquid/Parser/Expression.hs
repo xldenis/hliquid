@@ -36,7 +36,9 @@ nil :: Parser Expression
 nil = string "nil" *> pure Nil
 
 variable :: Parser Expression
-variable = Variable <$> (identifier `sepBy` char '.')
+variable = Variable <$> ident'
+  where ident  = identifier <* (optional (brackets ident'))
+        ident' = ident `sepBy` char '.'
 
 primExpr :: Parser Expression
 primExpr = lexeme $ stringLit <|> numberLit <|> boolean <|> nil <|> variable
@@ -54,13 +56,14 @@ filteredExpression = do
   return $ foldr ($) base filters
 
 filterOp = do
-    try $ symbol "|"
-    i <- identifier
-    args <- optional $ do
-      symbol ":"
-      (expression) `sepBy` (symbol ",")
-    sc
-    return $ \a -> Filter a i (join $ maybeToList args)
+  try $ symbol "|"
+  i <- identifier
+  args <- optional $ do
+    symbol ":"
+    (arg) `sepBy` (symbol ",")
+  sc
+  return $ \a -> Filter a i (join $ maybeToList args)
+  where arg = (try (identifier *> symbol ":") *> expression) <|> expression
 
 opTable = [ [ binary "==" Equal
             , binary "!=" NotEq

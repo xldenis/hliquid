@@ -33,6 +33,7 @@ data Statement
   | Layout
   | Paginate
   | Raw
+  | Section
   -- Variable Tag
   | Assign Text Text
   | Capture -- TODO
@@ -47,6 +48,7 @@ data Statement
 
   -- Shopify :(
   -- | Form
+  | Schema
   deriving (Eq, Show)
 
 data Operator

@@ -25,15 +25,18 @@ liquid = assignTag
       <|> continueTag
       <|> cycleTag
       <|> decrementTag
-      <|> expressionTag
       <|> formTag
       <|> forTag
       <|> ifTag
       <|> incrementTag
       <|> layoutTag
+      <|> includeTag
+      <|> sectionTag
       <|> paginateTag
       <|> tablerowTag
       <|> unlessTag
+      <|> schemaTag
+      <|> expressionTag
 
 ifTag :: Parser Statement
 ifTag = do
@@ -74,9 +77,14 @@ unlessTag = do
                       return $ Branch Comment body
 
 caseTag :: Parser Statement
-caseTag = try $ do
-  tag' $ symbol "case"
-  body <- some $ (tag' $ symbol "when") >> When <$> many liquid
+caseTag = do
+  try . tag' $ symbol "case" <* placeHolder
+  body <- some $ (try . tag' $ symbol "when" *> placeHolder) >> When <$> many liquid
+
+  e <- optional . try $ do
+    tag' $ symbol "else"
+    b <- many liquid
+    return $ Else b
   tag' $ symbol "endcase"
 
   return $ Case body
@@ -85,12 +93,18 @@ forTag :: Parser Statement
 forTag = do
   try . tag' $ symbol "for" *> placeHolder
   b <- many $ liquid
+
+  e <- optional . try $ do
+    tag' $ symbol "else"
+    b <- many liquid
+    return $ Else b
+
   tag' $ symbol "endfor"
   return $ For Form b
 
 tablerowTag :: Parser Statement
-tablerowTag = try $ do
-  tag' $ symbol "tablerow"
+tablerowTag = do
+  try . tag' $ symbol "tablerow"
   b <- many $ liquid
   tag' $ symbol "endtablerow"
 
@@ -110,6 +124,18 @@ layoutTag = try . tag' $ do
   symbol "layout"
   placeHolder
   pure Layout
+
+includeTag :: Parser Statement
+includeTag = try . tag' $ do
+  symbol "include"
+  placeHolder
+  pure $ Include ""
+
+sectionTag :: Parser Statement
+sectionTag = try . tag' $ do
+  symbol "section"
+  placeHolder
+  pure $ Section
 
 formTag :: Parser Statement
 formTag = do
@@ -134,8 +160,15 @@ commentTag = do
   tag' $ symbol "endcomment"
   return $ Comment
 
+schemaTag :: Parser Statement
+schemaTag = do
+  try . tag' $ symbol "schema"
+  many $ liquid
+  tag' $ symbol "endschema"
+  return $ Schema
+
 expressionTag :: Parser Statement
-expressionTag = try . tag $ do
+expressionTag = tag $ do
   e <- filteredExpression
   return $ Expression e
 

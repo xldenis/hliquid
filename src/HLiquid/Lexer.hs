@@ -21,10 +21,10 @@ sc :: Parser ()
 sc = L.space (void spaceChar) empty empty
 
 tag :: Parser a -> Parser a
-tag = between (symbol "{{") (symbol "}}")
+tag = between (symbol "{{-" <|> symbol "{{") (symbol "-}}" <|> symbol "}}")
 
 tag' :: Parser a -> Parser a
-tag' = between (symbol "{%") (symbol "%}")
+tag' = between (symbol "{%-" <|> symbol "{%") (symbol "-%}" <|> symbol "%}")
 
 placeHolder :: Parser String
 placeHolder = someTill anyChar (lookAhead $ string "%}")
@@ -34,3 +34,6 @@ number = L.signed sc L.number
 
 identifier :: Parser String
 identifier = many $ alphaNumChar <|> oneOf "_-"
+
+brackets :: Parser a -> Parser a
+brackets = between (char '[') (char ']')
