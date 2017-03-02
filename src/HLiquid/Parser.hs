@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module HLiquid.Parser where
 
+import Control.Monad (void)
+
 import Text.Megaparsec
 import Text.Megaparsec.Text
 
@@ -53,9 +55,9 @@ ifTag = do
   return . If $ b1 : (branches ++ maybeToList e)
 
   where branch nm = do
-                      cond <- try . braces $ symbol nm *> placeHolder
-                      body <- many $ liquid
-                      return $ Branch Comment body
+          cond <- simpleTag nm placeHolder
+          body <- many $ liquid
+          return $ Branch Comment body
 
 unlessTag :: Parser Statement
 unlessTag = do
@@ -68,41 +70,40 @@ unlessTag = do
     b <- many liquid
     return $ Else b
 
-  braces $ symbol "endunless"
+  simpleTag "endunless" (pure ())
   return . If $ b1 : (branches ++ maybeToList e)
 
   where branch nm = do
-                      cond <- try . braces $ symbol nm *> placeHolder
-                      body <- many $ liquid
-                      return $ Branch Comment body
+          cond <- simpleTag nm placeHolder
+          body <- many $ liquid
+          return $ Branch Comment body
 
 caseTag :: Parser Statement
-caseTag = do
-  try . braces $ symbol "case" <* placeHolder
-  body <- some $ do
-    try . braces $ symbol "when" *> placeHolder
-    When <$> many (try liquid)
+caseTag = tag "case" head body
+  where head = placeHolder *> (pure Case)
+        body f = do
+          body <- some $ do
+            simpleTag "when" (void placeHolder)
+            When <$> many (try liquid)
 
-  e <- optional . try $ do
-    braces $ symbol "else"
-    b <- many liquid
-    return $ Else b
-  braces $ symbol "endcase"
-
-  return $ Case body
+          e <- optional . try $ do
+            braces $ symbol "else"
+            b <- many liquid
+            return $ Else b
+          simpleTag "endcase" (pure ())
+          return $ f body
 
 forTag :: Parser Statement
-forTag = do
-  try . braces $ symbol "for" *> placeHolder
-  b <- many $ liquid
-
-  e <- optional . try $ do
-    braces $ symbol "else"
-    b <- many liquid
-    return $ Else b
-
-  braces $ symbol "endfor"
-  return $ For Form b
+forTag = tag "for" head body
+  where head = placeHolder *> (pure . uncurry $ For)
+        body f = do
+          b <- many $ liquid
+          e <- optional . try $ do
+            braces $ symbol "else"
+            b <- many liquid
+            return $ Else b
+          braces $ symbol "endfor"
+          return $ (curry f) Form b
 
 breakTag :: Parser Statement
 breakTag = simpleTag "break" (pure Break)
