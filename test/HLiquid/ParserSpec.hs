@@ -1,14 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
+module HLiquid.ParserSpec where
 
-module HLiquid.ParserSpec (spec) where
+import HLiquid.Parser
 
+import Test.Hspec
 
-  import Test.Hspec
+import SpecHelper
 
-  import HLiquid.Parser
-  import HLiquid.Syntax
-  import Expectation
+spec :: Spec
+spec = parallel $ do
+  filesShouldParse "test/parser/success" fullFile
+  filesShouldFail  "test/parser/failure" fullFile
 
-  spec :: Spec
-  spec = do
-    return ()
+  describe "tag braces match" $ do
+    "{%- include '' }}" `parserFails` liquid
+    "{{- 'test' %}" `parserFails` liquid
+    "{%- include '' %}" `parserWorks` liquid
+    "{{- 'test' }}" `parserWorks` liquid

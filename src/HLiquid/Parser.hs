@@ -45,15 +45,15 @@ ifTag = do
   branches <- many $ branch "elsif"
 
   e <- optional . try $ do
-    tag' $ symbol "else"
+    braces $ symbol "else"
     b <- many liquid
     return $ Else b
 
-  tag' $ symbol "endif"
+  braces $ symbol "endif"
   return . If $ b1 : (branches ++ maybeToList e)
 
   where branch nm = do
-                      cond <- try . tag' $ symbol nm *> placeHolder
+                      cond <- try . braces $ symbol nm *> placeHolder
                       body <- many $ liquid
                       return $ Branch Comment body
 
@@ -64,111 +64,109 @@ unlessTag = do
   branches <- many $ branch "elsif"
 
   e <- optional . try $ do
-    tag' $ symbol "else"
+    braces $ symbol "else"
     b <- many liquid
     return $ Else b
 
-  tag' $ symbol "endunless"
+  braces $ symbol "endunless"
   return . If $ b1 : (branches ++ maybeToList e)
 
   where branch nm = do
-                      cond <- try . tag' $ symbol nm *> placeHolder
+                      cond <- try . braces $ symbol nm *> placeHolder
                       body <- many $ liquid
                       return $ Branch Comment body
 
 caseTag :: Parser Statement
 caseTag = do
-  try . tag' $ symbol "case" <* placeHolder
-  body <- some $ (try . tag' $ symbol "when" *> placeHolder) >> When <$> many liquid
+  try . braces $ symbol "case" <* placeHolder
+  body <- some $ do
+    try . braces $ symbol "when" *> placeHolder
+    When <$> many (try liquid)
 
   e <- optional . try $ do
-    tag' $ symbol "else"
+    braces $ symbol "else"
     b <- many liquid
     return $ Else b
-  tag' $ symbol "endcase"
+  braces $ symbol "endcase"
 
   return $ Case body
 
 forTag :: Parser Statement
 forTag = do
-  try . tag' $ symbol "for" *> placeHolder
+  try . braces $ symbol "for" *> placeHolder
   b <- many $ liquid
 
   e <- optional . try $ do
-    tag' $ symbol "else"
+    braces $ symbol "else"
     b <- many liquid
     return $ Else b
 
-  tag' $ symbol "endfor"
+  braces $ symbol "endfor"
   return $ For Form b
 
-tablerowTag :: Parser Statement
-tablerowTag = do
-  try . tag' $ symbol "tablerow"
-  b <- many $ liquid
-  tag' $ symbol "endtablerow"
-
-  return $ Tablerow
-
 breakTag :: Parser Statement
-breakTag = try . tag' $ symbol "break" *> pure Break
+breakTag = simpleTag "break" (pure Break)
 
 continueTag :: Parser Statement
-continueTag = try . tag' $ symbol "continue" *> pure Continue
+continueTag = simpleTag "continue" (pure Continue)
 
 cycleTag :: Parser Statement
-cycleTag = try . tag' $ symbol "cycle" *> placeHolder *> pure (Cycle [])
+cycleTag = try . braces $ symbol "cycle" *> placeHolder *> pure (Cycle [])
 
 layoutTag :: Parser Statement
-layoutTag = try . tag' $ do
-  symbol "layout"
-  placeHolder
-  pure Layout
+layoutTag = simpleTag "layout"
+  (placeHolder *>  (pure $ Layout))
 
 includeTag :: Parser Statement
-includeTag = try . tag' $ do
-  symbol "include"
-  placeHolder
-  pure $ Include ""
+includeTag = simpleTag "include"
+  (placeHolder *>  (pure $ Include ""))
 
 sectionTag :: Parser Statement
-sectionTag = try . tag' $ do
-  symbol "section"
-  placeHolder
-  pure $ Section
+sectionTag = simpleTag "section"
+  (placeHolder *>  (pure $ Section ))
+
+tablerowTag :: Parser Statement
+tablerowTag = tag "tablerow" head body
+  where head = placeHolder *> (pure . const $ Tablerow)
+        body f = do
+          b <- many $ liquid
+          braces $ symbol "endtablerow"
+          return $ f ()
 
 formTag :: Parser Statement
-formTag = do
-  try . tag' $ symbol "form" *> placeHolder
-  b <- many $ liquid
-  tag' $ symbol "endform"
-
-  return $ Form
+formTag = tag "form" head body
+  where head = placeHolder *> (pure . const $ Form)
+        body f = do
+          b <- many $ liquid
+          braces $ symbol "endform"
+          return $ f ()
 
 paginateTag :: Parser Statement
-paginateTag = do
-  try . tag' $ symbol "paginate" *> placeHolder
-  b <- many $ liquid
-  tag' $ symbol "endpaginate"
-
-  return $ Paginate
+paginateTag = tag "paginate" head body
+  where head = placeHolder *> (pure . const $ Paginate)
+        body f = do
+          many $ liquid
+          braces $ symbol "endpaginate"
+          return $ f ()
 
 commentTag :: Parser Statement
-commentTag = do
-  try . tag' $ symbol "comment"
-  many $ liquid
-  tag' $ symbol "endcomment"
-  return $ Comment
+commentTag = tag "comment" head body
+  where head = pure . const $ Comment
+        body f = do
+          many $ liquid
+          braces $ symbol "endcomment"
+          return $ f ()
 
 schemaTag :: Parser Statement
-schemaTag = do
-  try . tag' $ symbol "schema"
-  many $ liquid
-  tag' $ symbol "endschema"
-  return $ Schema
+schemaTag = tag "schema" head body
+  where head = pure . const $ Schema
+        body f = do
+          many $ liquid
+          braces $ symbol "endschema"
+          return $ f ()
 
 expressionTag :: Parser Statement
-expressionTag = tag $ do
+expressionTag = try . braces' $ do
   e <- filteredExpression
   return $ Expression e
 

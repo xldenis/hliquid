@@ -9,20 +9,20 @@ import Text.Megaparsec.Text
 import HLiquid.Lexer
 
 assignTag :: Parser Statement
-assignTag = try . tag' $ do
+assignTag = try . braces $ do
   symbol "assign"
   placeHolder
   return $ Assign "" ""
 
 incrementTag :: Parser Statement
-incrementTag = try . tag' $ symbol "increment" *> placeHolder *> pure Increment
+incrementTag = try . braces $ symbol "increment" *> placeHolder *> pure Increment
 
 decrementTag :: Parser Statement
-decrementTag = try . tag' $ symbol "decrement" *> placeHolder *> pure Decrement
+decrementTag = try . braces $ symbol "decrement" *> placeHolder *> pure Decrement
 
 captureTag :: Parser Statement -> Parser Statement
 captureTag e = do
-  try . tag' $ symbol "capture" *> placeHolder
+  try . braces $ symbol "capture" *> placeHolder
   many e
-  tag' $ symbol "endcapture"
+  braces $ symbol "endcapture"
   return $ Capture
