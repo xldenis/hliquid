@@ -62,6 +62,12 @@ tag' name head body = do
 simpleTag :: String -> Parser b -> Parser b
 simpleTag name head = tag name (liftM const head) (\x -> return $ x ())
 
+simpleBlockTag :: String -> Parser (() -> b) -> Parser c -> Parser b
+simpleBlockTag name head body = tag name (head) $ \f -> do
+  body
+  braces . symbol $ "end" ++ name
+  return $ f ()
+
 braces :: Parser a -> Parser a
 braces a = do
   ty <- openBraces

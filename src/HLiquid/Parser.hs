@@ -126,44 +126,24 @@ sectionTag = simpleTag "section"
   (placeHolder *>  (pure $ Section ))
 
 tablerowTag :: Parser Statement
-tablerowTag = tag "tablerow" head body
+tablerowTag = simpleBlockTag "tablerow" head (many liquid)
   where head = placeHolder *> (pure . const $ Tablerow)
-        body f = do
-          b <- many $ liquid
-          braces $ symbol "endtablerow"
-          return $ f ()
 
 formTag :: Parser Statement
-formTag = tag "form" head body
+formTag = simpleBlockTag "form" head (many liquid)
   where head = placeHolder *> (pure . const $ Form)
-        body f = do
-          b <- many $ liquid
-          braces $ symbol "endform"
-          return $ f ()
 
 paginateTag :: Parser Statement
-paginateTag = tag "paginate" head body
+paginateTag = simpleBlockTag "paginate" head (many liquid)
   where head = placeHolder *> (pure . const $ Paginate)
-        body f = do
-          many $ liquid
-          braces $ symbol "endpaginate"
-          return $ f ()
 
 commentTag :: Parser Statement
-commentTag = tag "comment" head body
+commentTag = simpleBlockTag "comment" head (many liquid)
   where head = pure . const $ Comment
-        body f = do
-          many $ liquid
-          braces $ symbol "endcomment"
-          return $ f ()
 
 schemaTag :: Parser Statement
-schemaTag = tag "schema" head body
+schemaTag = simpleBlockTag "schema" head (many liquid)
   where head = pure . const $ Schema
-        body f = do
-          many $ liquid
-          braces $ symbol "endschema"
-          return $ f ()
 
 expressionTag :: Parser Statement
 expressionTag = try . braces' $ do
