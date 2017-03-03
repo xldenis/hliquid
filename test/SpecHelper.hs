@@ -4,7 +4,10 @@ module SpecHelper where
 import Control.Monad (filterM)
 import Data.Text (Text)
 import Data.Text.IO as T (readFile)
+import Data.Foldable (toList)
+
 import System.Directory
+import System.Directory.Tree
 import System.FilePath
 
 import Test.Hspec
@@ -61,4 +64,7 @@ showParseError :: (Ord t, ShowToken t, ShowErrorComponent e) => ParseError t e -
 showParseError = unlines . fmap ("  " ++) . lines . parseErrorPretty
 
 getDirectoryPaths :: String -> IO [FilePath]
-getDirectoryPaths dir =  map (\f -> replaceDirectory f dir) <$> getDirectoryContents dir
+-- getDirectoryPaths dir =  map (\f -> replaceDirectory f dir) <$> getDirectoryContents dir
+getDirectoryPaths dir = readDirectoryWith (return) dir >>= return . toList . (filterDir pred) .dirTree
+  where pred (File n _) = takeExtension n == ".liquid"
+        pred _ = True

@@ -18,53 +18,35 @@ import HLiquid.Parser.Expression
 fullFile = many liquid <* eof
 
 liquid :: Parser Statement
-liquid = assignTag
-      <|> bodyText
-      <|> breakTag
-      <|> captureTag liquid
-      <|> caseTag
-      <|> commentTag
-      <|> continueTag
-      <|> cycleTag
-      <|> decrementTag
-      <|> formTag
-      <|> forTag
-      <|> ifTag
-      <|> incrementTag
-      <|> layoutTag
-      <|> includeTag
-      <|> sectionTag
-      <|> paginateTag
-      <|> tablerowTag
-      <|> unlessTag
-      <|> schemaTag
-      <|> expressionTag
+liquid = choice
+  [ assignTag, bodyText, breakTag, captureTag liquid, caseTag
+  , commentTag, continueTag, cycleTag, decrementTag, formTag
+  , forTag, ifTag, incrementTag, layoutTag, includeTag, sectionTag
+  , paginateTag, tablerowTag, unlessTag, schemaTag, rawTag, expressionTag
+  ]
+
+placeHolderTag :: Parser Statement
+placeHolderTag = braces $ placeHolder *> (pure Break)
+
+-- type TagParser a = (String, Parser (a -> Statement), (a -> Statement) -> Parser Statement)
+-- can be made into just a `Parser a` --------------------^
 
 ifTag :: Parser Statement
 ifTag = do
   b1 <- branch "if"
-
   branches <- many $ branch "elsif"
-
   e <- optional . try $ do
     braces $ symbol "else"
     b <- many liquid
     return $ Else b
 
-  braces $ symbol "endif"
+  simpleTag "endif" (pure ())
   return . If $ b1 : (branches ++ maybeToList e)
-
-  where branch nm = do
-          cond <- simpleTag nm placeHolder
-          body <- many $ liquid
-          return $ Branch Comment body
 
 unlessTag :: Parser Statement
 unlessTag = do
   b1 <- branch "unless"
-
   branches <- many $ branch "elsif"
-
   e <- optional . try $ do
     braces $ symbol "else"
     b <- many liquid
@@ -73,25 +55,24 @@ unlessTag = do
   simpleTag "endunless" (pure ())
   return . If $ b1 : (branches ++ maybeToList e)
 
-  where branch nm = do
-          cond <- simpleTag nm placeHolder
-          body <- many $ liquid
-          return $ Branch Comment body
+branch :: String -> Parser Branch
+branch nm = do
+  cond <- simpleTag nm filteredExpression
+  body <- many $ liquid
+  return $ Branch cond body
 
 caseTag :: Parser Statement
-caseTag = tag "case" head body
-  where head = placeHolder *> (pure Case)
-        body f = do
-          body <- some $ do
-            simpleTag "when" (void placeHolder)
-            When <$> many (try liquid)
+caseTag = tag "case" (Case <$> filteredExpression) $ \f -> do
+  body <- some $ do
+    w <- simpleTag "when" (When <$> filteredExpression)
+    w <$> many liquid
 
-          e <- optional . try $ do
-            braces $ symbol "else"
-            b <- many liquid
-            return $ Else b
-          simpleTag "endcase" (pure ())
-          return $ f body
+  e <- optional . try $ do
+    braces $ symbol "else"
+    b <- many liquid
+    return $ Else b
+  simpleTag "endcase" (pure ())
+  return $ f body
 
 forTag :: Parser Statement
 forTag = tag "for" head body
@@ -103,7 +84,11 @@ forTag = tag "for" head body
             b <- many liquid
             return $ Else b
           braces $ symbol "endfor"
-          return $ (curry f) Form b
+          return $ (curry f) Break b
+
+tablerowTag :: Parser Statement
+tablerowTag = simpleBlockTag "tablerow" head (many liquid)
+  where head = Tablerow <$> placeHolder
 
 breakTag :: Parser Statement
 breakTag = simpleTag "break" (pure Break)
@@ -112,39 +97,54 @@ continueTag :: Parser Statement
 continueTag = simpleTag "continue" (pure Continue)
 
 cycleTag :: Parser Statement
-cycleTag = try . braces $ symbol "cycle" *> placeHolder *> pure (Cycle [])
+cycleTag = simpleTag "cycle" (placeHolder *> (pure $ Cycle []))
 
 layoutTag :: Parser Statement
 layoutTag = simpleTag "layout"
-  (placeHolder *>  (pure $ Layout))
+  (Layout <$> filteredExpression)
 
 includeTag :: Parser Statement
-includeTag = simpleTag "include"
-  (placeHolder *>  (pure $ Include ""))
+includeTag = simpleTag "include" body
+  where body = do
+          e <- filteredExpression
+          o <- optional $ do
+            symbol "with"
+            choice [namedArg `sepBy1` (symbol ","), pure <$> filteredExpression]
+          w <- many $ (symbol "," *> namedArg)
+          return $ Include e
+        namedArg = (try $ identifier *> symbol ":") *> filteredExpression
 
 sectionTag :: Parser Statement
 sectionTag = simpleTag "section"
-  (placeHolder *>  (pure $ Section ))
-
-tablerowTag :: Parser Statement
-tablerowTag = simpleBlockTag "tablerow" head (many liquid)
-  where head = placeHolder *> (pure . const $ Tablerow)
+  (Section <$> filteredExpression)
 
 formTag :: Parser Statement
 formTag = simpleBlockTag "form" head (many liquid)
-  where head = placeHolder *> (pure . const $ Form)
+  where head = Form <$> filteredExpression <*> startBy expression (symbol ",")
+        startBy p sep = (sep *> sepBy p sep) <|> pure []
 
 paginateTag :: Parser Statement
 paginateTag = simpleBlockTag "paginate" head (many liquid)
-  where head = placeHolder *> (pure . const $ Paginate)
+  where head = Paginate <$> placeHolder
 
+-- | Comment should not parse inner liquid
 commentTag :: Parser Statement
-commentTag = simpleBlockTag "comment" head (many liquid)
-  where head = pure . const $ Comment
+commentTag = simpleBlockTag "comment" head (body)
+  where head = pure $ Comment
+        body = do
+          notFollowedBy (string "{% endcomment")
+          someTill anyChar $ lookAhead (string "{% endcomment")
 
 schemaTag :: Parser Statement
 schemaTag = simpleBlockTag "schema" head (many liquid)
-  where head = pure . const $ Schema
+  where head = pure $ Schema
+
+rawTag :: Parser Statement
+rawTag = simpleBlockTag "raw" head (body)
+  where head = pure Raw
+        body = do
+          notFollowedBy (string "{%")
+          someTill anyChar $ lookAhead (string "{%")
 
 expressionTag :: Parser Statement
 expressionTag = try . braces' $ do
@@ -155,4 +155,4 @@ bodyText :: Parser Statement
 bodyText = LitString . pack <$> do
   notFollowedBy openB
   someTill anyChar $ lookAhead openB
-  where openB = (string "{{" <|> string "{%" <|> eof *> pure "e")
+  where openB = ((void $ string "{{") <|> (void $ string "{%") <|> eof)

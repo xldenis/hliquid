@@ -1,6 +1,7 @@
+{-# LANGUAGE LambdaCase #-}
 module HLiquid.Parser.Expression where
 
-import Control.Monad (join)
+import Control.Monad (join, liftM)
 
 import Data.Maybe
 
@@ -36,9 +37,13 @@ nil :: Parser Expression
 nil = string "nil" *> pure Nil
 
 variable :: Parser Expression
-variable = Variable <$> ident'
-  where ident  = identifier <* (optional (brackets ident'))
-        ident' = ident `sepBy` char '.'
+variable = ident'
+  where ident  = do
+          v <- Variable <$> identifier
+          optional (brackets primExpr) >>= \case
+            Just b -> return $ Index v b
+            Nothing -> return v
+        ident' = Selector <$> ident `sepBy1` char '.'
 
 primExpr :: Parser Expression
 primExpr = lexeme $ stringLit <|> numberLit <|> boolean <|> nil <|> variable
@@ -67,10 +72,10 @@ filterOp = do
 
 opTable = [ [ binary "==" Equal
             , binary "!=" NotEq
-            , binary "<"  Less
-            , binary ">"  Greater
             , binary ">=" GreaterEq
             , binary "<=" LessEq
+            , binary "<"  Less
+            , binary ">"  Greater
             , binary "or" Or
             , binary "and" And
             , binary "contains" Contains

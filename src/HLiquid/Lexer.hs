@@ -62,11 +62,11 @@ tag' name head body = do
 simpleTag :: String -> Parser b -> Parser b
 simpleTag name head = tag name (liftM const head) (\x -> return $ x ())
 
-simpleBlockTag :: String -> Parser (() -> b) -> Parser c -> Parser b
+simpleBlockTag :: String -> Parser (a -> b) -> Parser a -> Parser b
 simpleBlockTag name head body = tag name (head) $ \f -> do
-  body
+  b <- body
   braces . symbol $ "end" ++ name
-  return $ f ()
+  return $ f b
 
 braces :: Parser a -> Parser a
 braces a = do
@@ -79,7 +79,7 @@ braces' a = do
   a <* closeBraces ty
 
 placeHolder :: Parser String
-placeHolder = someTill anyChar (lookAhead $ string "-%}" <|> string "%}")
+placeHolder = someTill anyChar (lookAhead $ string "-%}" <|> string "%}" <|> string "}}")
 
 number :: Parser Scientific
 number = L.signed sc L.number
@@ -94,7 +94,7 @@ identifier = p >>= res
             fail $ "The reserved word `" ++ i ++ "` cannot be used as an identifier."
           else
             return i
-        identChar = alphaNumChar <|> oneOf "_-"
+        identChar = alphaNumChar <|> oneOf "_-?"
 
 brackets :: Parser a -> Parser a
 brackets = between (char '[') (char ']')

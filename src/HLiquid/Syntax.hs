@@ -8,32 +8,32 @@ data Liquid
   deriving (Eq, Show)
 
 data When
-  = When [Statement]
+  = When Expression [Statement]
   deriving (Eq, Show)
 
 data Branch
-  = Branch Statement [Statement]
+  = Branch Expression [Statement]
   | Else [Statement]
   deriving (Eq, Show)
 
 data Statement
   = Expression Expression -- Temporary Expand to actual expressions later
   | If [Branch] -- unless and elseif
-  | Case [When]
+  | Case Expression [When]
   -- Loop Tags
   | For Statement [Statement]
   | Break
   | Continue
   | Cycle [Statement]
-  | Tablerow
+  | Tablerow String [Statement]
   -- Layout Tag
-  | Comment
-  | Include Text
-  | Form
-  | Layout
-  | Paginate
-  | Raw
-  | Section
+  | Comment String
+  | Include Expression
+  | Form Expression [Expression] [Statement]
+  | Layout Expression
+  | Paginate String [Statement]
+  | Raw String
+  | Section Expression
   -- Variable Tag
   | Assign Text Text
   | Capture -- TODO
@@ -47,8 +47,7 @@ data Statement
   | LitString Text
 
   -- Shopify :(
-  -- | Form
-  | Schema
+  | Schema [Statement]
   deriving (Eq, Show)
 
 data Operator
@@ -72,5 +71,8 @@ data Expression
   | Array Expression
   | Op Operator Expression Expression
   | Filter Expression  String [Expression]
-  | Variable [String]
+  | Variable String
+  | Selector [Expression]
+  | Index Expression Expression
   deriving (Eq, Show)
+

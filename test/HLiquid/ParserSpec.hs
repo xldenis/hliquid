@@ -9,8 +9,9 @@ import SpecHelper
 
 spec :: Spec
 spec = parallel $ do
-  filesShouldParse "test/parser/success" fullFile
-  filesShouldFail  "test/parser/failure" fullFile
+  filesShouldParse "test/parser/liquid/success" fullFile
+  filesShouldFail  "test/parser/liquid/failure" fullFile
+  filesShouldParse "assets" fullFile
 
   describe "tag braces match" $ do
     "{%- include '' }}" `parserFails` liquid
